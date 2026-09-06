@@ -235,6 +235,7 @@ jobs:
             "https://github.com/cross-tools/musl-cross/releases/download/20250520/$archive" \
             -P musl_gcc/
           tar xf "musl_gcc/$archive" -C musl_gcc/
+          chmod -R u+w "musl_gcc/$musl_target"
           echo "$PWD/musl_gcc/$musl_target/bin" >> "$GITHUB_PATH"
           ln -sfn "$PWD/musl_gcc/$musl_target/$musl_target/sysroot" \
             musl_gcc/sysroot
