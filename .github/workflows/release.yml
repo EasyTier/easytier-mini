@@ -108,7 +108,7 @@ jobs:
     name: Build ${{ matrix.artifact }}
     needs: [prepare, test]
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
@@ -193,7 +193,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -qqy build-essential mold musl-tools
+          packages=(build-essential mold musl-tools)
+          if [[ "$TARGET" == "x86_64-unknown-linux-musl" ]]; then
+            packages+=(clang lld)
+          fi
+          sudo apt-get install -qqy "${packages[@]}"
 
       - name: Set up protoc
         uses: arduino/setup-protoc@v3
@@ -255,6 +259,10 @@ jobs:
         run: |
           case "${{ matrix.builder }}" in
             cargo)
+              if [[ "$TARGET" == "x86_64-unknown-linux-musl" ]]; then
+                export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang
+                export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-fuse-ld=lld"
+              fi
               cargo build --profile mini --target "$TARGET" -p easytier-mini
               ;;
             zig)
