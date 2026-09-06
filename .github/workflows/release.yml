@@ -445,7 +445,8 @@ jobs:
           if [[ "$PRERELEASE" == "true" ]]; then
             release_args+=(--prerelease)
           fi
-          gh release create "${release_args[@]}"
+          gh release create "${release_args[@]}" \
+            --repo "$GITHUB_REPOSITORY"
 
       - name: Publish complete release
         env:
@@ -458,4 +459,5 @@ jobs:
           if [[ "$PRERELEASE" == "false" ]]; then
             publish_args+=(--latest)
           fi
-          gh release edit "${publish_args[@]}"
+          gh release edit "${publish_args[@]}" \
+            --repo "$GITHUB_REPOSITORY"
