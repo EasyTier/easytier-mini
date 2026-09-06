@@ -6,6 +6,35 @@ client from the main EasyTier repository. The source code remains in
 [`EasyTier/EasyTier`](https://github.com/EasyTier/EasyTier); this repository
 contains release automation only.
 
+## Quick downloads
+
+The current build is the
+[`v2.7.0-preview.1`](https://github.com/EasyTier/easytier-mini/releases/tag/v2.7.0-preview.1)
+development preview. Choose your platform below to download it directly.
+
+| System | Architecture | Download |
+| --- | --- | --- |
+| Linux | x86-64 | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-linux-x86_64-v2.7.0-preview.1.zip) |
+| Linux | AArch64 | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-linux-aarch64-v2.7.0-preview.1.zip) |
+| Linux | RISC-V 64 | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-linux-riscv64-v2.7.0-preview.1.zip) |
+| Linux | LoongArch64 | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-linux-loongarch64-v2.7.0-preview.1.zip) |
+| Linux | ARMv7 hard float | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-linux-armv7hf-v2.7.0-preview.1.zip) |
+| Linux | ARMv7 soft float | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-linux-armv7-v2.7.0-preview.1.zip) |
+| Linux | ARM hard float | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-linux-armhf-v2.7.0-preview.1.zip) |
+| Linux | ARM soft float | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-linux-arm-v2.7.0-preview.1.zip) |
+| Linux | MIPS | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-linux-mips-v2.7.0-preview.1.zip) |
+| Linux | MIPSEL | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-linux-mipsel-v2.7.0-preview.1.zip) |
+| FreeBSD 13.2 | x86-64 | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-freebsd-13.2-x86_64-v2.7.0-preview.1.zip) |
+| macOS | x86-64 | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-macos-x86_64-v2.7.0-preview.1.zip) |
+| macOS | Apple Silicon | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-macos-aarch64-v2.7.0-preview.1.zip) |
+| Windows | x86-64 | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-windows-x86_64-v2.7.0-preview.1.zip) |
+| Windows | x86 | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-windows-i686-v2.7.0-preview.1.zip) |
+| Windows | ARM64 | [Download](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/easytier-mini-windows-arm64-v2.7.0-preview.1.zip) |
+
+[Browse all releases](https://github.com/EasyTier/easytier-mini/releases) or
+[download `SHA256SUMS`](https://github.com/EasyTier/easytier-mini/releases/download/v2.7.0-preview.1/SHA256SUMS)
+to verify an archive.
+
 ## Release contents
 
 Each release contains `easytier-mini` for the same non-GUI targets as the
