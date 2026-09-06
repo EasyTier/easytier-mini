@@ -93,6 +93,7 @@ jobs:
         with:
           toolchain: "1.95"
           cache: false
+          rustflags: ""
 
       - name: Test easytier-mini
         working-directory: source
