@@ -82,6 +82,11 @@ jobs:
           ref: ${{ needs.prepare.outputs.source_sha }}
           path: source
 
+      - name: Install test build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -qqy build-essential mold
+
       - name: Set up protoc
         uses: arduino/setup-protoc@v3
         with:
