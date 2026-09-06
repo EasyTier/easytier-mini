@@ -1,0 +1,336 @@
+name: Release easytier-mini
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: EasyTier tag, branch, or commit to build
+        required: true
+        type: string
+      release_tag:
+        description: Tag to create for this release
+        required: true
+        type: string
+      prerelease:
+        description: Mark the release as a prerelease
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+      source_version: ${{ steps.source.outputs.version }}
+    steps:
+      - name: Check out EasyTier source
+        uses: actions/checkout@v5
+        with:
+          repository: EasyTier/EasyTier
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 1
+          path: source
+
+      - name: Validate release source
+        id: source
+        working-directory: source
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          test -f easytier-contrib/easytier-mini/Cargo.toml
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+
+          source_sha=$(git rev-parse HEAD)
+          source_version=$(sed -n \
+            's/^version = "\([^"]*\)"/\1/p' \
+            easytier-contrib/easytier-mini/Cargo.toml | head -n 1)
+          test -n "$source_version"
+
+          if [[ "$PRERELEASE" == "false" ]]; then
+            test "$SOURCE_REF" = "$RELEASE_TAG"
+            test "v$source_version" = "$RELEASE_TAG"
+            git ls-remote --exit-code --tags origin \
+              "refs/tags/$RELEASE_TAG" >/dev/null
+          fi
+
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "version=$source_version" >> "$GITHUB_OUTPUT"
+
+  test:
+    runs-on: ubuntu-24.04
+    needs: prepare
+    steps:
+      - name: Check out EasyTier source
+        uses: actions/checkout@v5
+        with:
+          repository: EasyTier/EasyTier
+          ref: ${{ needs.prepare.outputs.source_sha }}
+          path: source
+
+      - name: Set up protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "35.1"
+          repo-token: ${{ github.token }}
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: "1.95"
+          cache: false
+
+      - name: Test easytier-mini
+        working-directory: source
+        run: cargo test -p easytier-mini
+
+  build:
+    name: Build ${{ matrix.artifact }}
+    needs: [prepare, test]
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-24.04
+            artifact: linux-x86_64
+            builder: cargo
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+            artifact: linux-aarch64
+            builder: cargo
+          - target: riscv64gc-unknown-linux-musl
+            runner: ubuntu-24.04
+            artifact: linux-riscv64
+            builder: zig
+          - target: loongarch64-unknown-linux-musl
+            runner: ubuntu-24.04
+            artifact: linux-loongarch64
+            builder: zig
+          - target: armv7-unknown-linux-musleabihf
+            runner: ubuntu-24.04
+            artifact: linux-armv7hf
+            builder: zig
+          - target: armv7-unknown-linux-musleabi
+            runner: ubuntu-24.04
+            artifact: linux-armv7
+            builder: zig
+          - target: arm-unknown-linux-musleabihf
+            runner: ubuntu-24.04
+            artifact: linux-armhf
+            builder: zig
+          - target: arm-unknown-linux-musleabi
+            runner: ubuntu-24.04
+            artifact: linux-arm
+            builder: zig
+          - target: mips-unknown-linux-musl
+            runner: ubuntu-24.04
+            artifact: linux-mips
+            builder: mips
+          - target: mipsel-unknown-linux-musl
+            runner: ubuntu-24.04
+            artifact: linux-mipsel
+            builder: mips
+          - target: x86_64-unknown-freebsd
+            runner: ubuntu-24.04
+            artifact: freebsd-13.2-x86_64
+            builder: zig
+          - target: x86_64-apple-darwin
+            runner: macos-latest
+            artifact: macos-x86_64
+            builder: cargo
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+            artifact: macos-aarch64
+            builder: cargo
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            artifact: windows-x86_64
+            builder: cargo
+            windows_arch: x86_64
+          - target: i686-pc-windows-msvc
+            runner: windows-latest
+            artifact: windows-i686
+            builder: cargo
+            windows_arch: i686
+          - target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+            artifact: windows-arm64
+            builder: cargo
+            windows_arch: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - name: Check out EasyTier source
+        uses: actions/checkout@v5
+        with:
+          repository: EasyTier/EasyTier
+          ref: ${{ needs.prepare.outputs.source_sha }}
+          path: source
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -qqy build-essential mold musl-tools
+
+      - name: Set up protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "35.1"
+          repo-token: ${{ github.token }}
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: "1.95"
+          target: ${{ matrix.builder != 'mips' && matrix.target || '' }}
+          components: ${{ matrix.builder == 'mips' && 'rust-src' || '' }}
+          cache: false
+          rustflags: ""
+
+      - name: Set up Zig
+        if: matrix.builder == 'zig'
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+          use-cache: true
+
+      - name: Install cargo-zigbuild
+        if: matrix.builder == 'zig'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild@0.23.2
+
+      - name: Set up MIPS toolchain
+        if: matrix.builder == 'mips'
+        working-directory: source
+        run: |
+          set -euo pipefail
+          musl_target="${TARGET}sf"
+          archive="${musl_target}.tar.xz"
+          mkdir -p musl_gcc
+          wget --inet4-only -q \
+            "https://github.com/cross-tools/musl-cross/releases/download/20250520/$archive" \
+            -P musl_gcc/
+          tar xf "musl_gcc/$archive" -C musl_gcc/
+          echo "$PWD/musl_gcc/$musl_target/bin" >> "$GITHUB_PATH"
+          ln -sfn "$PWD/musl_gcc/$musl_target/$musl_target/sysroot" \
+            musl_gcc/sysroot
+          echo "BINDGEN_EXTRA_CLANG_ARGS=--sysroot=$PWD/musl_gcc/$musl_target/$musl_target/sysroot" \
+            >> "$GITHUB_ENV"
+
+          gcc_dir="musl_gcc/$musl_target/lib/gcc/$musl_target/15.1.0"
+          cp "$gcc_dir/libgcc_eh.a" "$gcc_dir/libunwind.a"
+          (
+            cd "$gcc_dir"
+            ar x libgcc.a _ctzsi2.o _clz.o _bswapsi2.o
+            ar rcs libctz.a _ctzsi2.o _clz.o _bswapsi2.o
+          )
+
+      - name: Build easytier-mini
+        working-directory: source
+        run: |
+          case "${{ matrix.builder }}" in
+            cargo)
+              cargo build --profile mini --target "$TARGET" -p easytier-mini
+              ;;
+            zig)
+              cargo zigbuild --profile mini --target "$TARGET" -p easytier-mini
+              ;;
+            mips)
+              ./easytier-contrib/easytier-mini/build-mips.sh "$TARGET"
+              ;;
+          esac
+
+      - name: Prepare artifact
+        working-directory: source
+        env:
+          WINDOWS_ARCH: ${{ matrix.windows_arch }}
+        run: |
+          set -euo pipefail
+          mkdir -p package
+          if [[ "$TARGET" == *windows* ]]; then
+            cp "target/$TARGET/mini/easytier-mini.exe" package/
+            cp "easytier/third_party/$WINDOWS_ARCH/wintun.dll" package/
+          else
+            cp "target/$TARGET/mini/easytier-mini" package/
+            chmod +x package/easytier-mini
+          fi
+
+          case "$TARGET" in
+            x86_64-unknown-linux-musl)
+              test "$(wc -c < package/easytier-mini)" -lt 5000000
+              ;;
+            mips-unknown-linux-musl|mipsel-unknown-linux-musl)
+              test "$(wc -c < package/easytier-mini)" -lt 5500000
+              ;;
+          esac
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: easytier-mini-${{ matrix.artifact }}
+          path: source/package/*
+          if-no-files-found: error
+
+  release:
+    runs-on: ubuntu-24.04
+    needs: [prepare, build]
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: easytier-mini-*
+          path: artifacts
+
+      - name: Create release archives and checksums
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir release-assets
+          for artifact_dir in artifacts/easytier-mini-*; do
+            artifact_name=$(basename "$artifact_dir")
+            if [[ -f "$artifact_dir/easytier-mini" ]]; then
+              chmod +x "$artifact_dir/easytier-mini"
+            fi
+            (
+              cd "$artifact_dir"
+              zip -9 -r \
+                "../../release-assets/$artifact_name-$RELEASE_TAG.zip" .
+            )
+          done
+          (
+            cd release-assets
+            sha256sum ./*.zip > SHA256SUMS
+          )
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          name: easytier-mini ${{ inputs.release_tag }}
+          prerelease: ${{ inputs.prerelease }}
+          make_latest: ${{ inputs.prerelease && 'false' || 'true' }}
+          body: |
+            Compact EasyTier client built from
+            [`EasyTier/EasyTier@${{ needs.prepare.outputs.source_sha }}`](https://github.com/EasyTier/EasyTier/commit/${{ needs.prepare.outputs.source_sha }}).
+
+            Source crate version: `${{ needs.prepare.outputs.source_version }}`
+          files: release-assets/*
